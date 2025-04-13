@@ -1,0 +1,7 @@
+{
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ],
+  "buildCommand": "cd login-app && npm run build",
+  "outputDirectory": "login-app/build"
+} 
