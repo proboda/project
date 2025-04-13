@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import './App.css';
 
 // API base URL
-const API_URL = 'https://project-t6kz.onrender.com';
+// const API_URL = 'http://localhost:5001';
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -15,6 +15,10 @@ function App() {
   const [passwordStrength, setPasswordStrength] = useState({
     score: 0,
     message: ''
+  });
+  const [onlineUsers, setOnlineUsers] = useState({
+    count: 0,
+    users: []
   });
 
   // Check password strength
@@ -98,6 +102,69 @@ function App() {
     }
   }, [token, verifyToken]);
 
+  // Add a function to fetch online users
+  const fetchOnlineUsers = useCallback(async () => {
+    try {
+      console.log('Fetching online users...');
+      const response = await fetch(`${API_URL}/api/users/online`);
+      
+      if (!response.ok) {
+        console.error(`Failed to fetch online users: ${response.status} ${response.statusText}`);
+        return;
+      }
+      
+      const data = await response.json();
+      console.log('Online users data:', data);
+      
+      setOnlineUsers(data);
+    } catch (error) {
+      console.error('Failed to fetch online users:', error);
+    }
+  }, [API_URL]);
+
+  // Send heartbeat every 30 seconds while logged in
+  useEffect(() => {
+    if (!isLoggedIn || !token) return;
+
+    const sendHeartbeat = async () => {
+      try {
+        console.log('Sending heartbeat...');
+        const response = await fetch(`${API_URL}/api/users/heartbeat`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (response.ok) {
+          console.log('Heartbeat successful');
+        } else {
+          console.warn('Heartbeat failed:', response.status);
+        }
+      } catch (error) {
+        console.error('Heartbeat error:', error);
+      }
+    };
+
+    // Send initial heartbeat
+    sendHeartbeat();
+    
+    // Set up interval for heartbeat
+    const heartbeatInterval = setInterval(sendHeartbeat, 30000);
+    
+    // Cleanup on unmount or when logged out
+    return () => clearInterval(heartbeatInterval);
+  }, [isLoggedIn, token, API_URL]);
+
+  // Fetch online users count periodically
+  useEffect(() => {
+    fetchOnlineUsers();
+    
+    const fetchInterval = setInterval(fetchOnlineUsers, 10000);
+    
+    return () => clearInterval(fetchInterval);
+  }, [fetchOnlineUsers]);
+
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
@@ -135,6 +202,16 @@ function App() {
         localStorage.setItem('token', data.token);
         setToken(data.token);
         setIsLoggedIn(true);
+        
+        // Update online count if provided by the server
+        if (data.onlineCount) {
+          setOnlineUsers(prevState => ({
+            ...prevState,
+            count: data.onlineCount,
+            users: [...prevState.users, { username }]
+          }));
+        }
+        
         setError('');
         
         // Clear sensitive data
@@ -207,7 +284,20 @@ function App() {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    if (token) {
+      try {
+        await fetch(`${API_URL}/api/users/logout`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+      } catch (error) {
+        console.error('Logout error:', error);
+      }
+    }
+    
     localStorage.removeItem('token');
     setToken(null);
     setIsLoggedIn(false);
@@ -272,10 +362,24 @@ function App() {
               {isSignup ? 'Log In' : 'Sign Up'}
             </button>
           </p>
+          <div className="online-users">
+            <p>{onlineUsers.count} user{onlineUsers.count !== 1 ? 's' : ''} online</p>
+          </div>
         </div>
       ) : (
         <div className="welcome-container">
           <h1>Welcome, {username}!</h1>
+          <div className="online-users-container">
+            <h3>{onlineUsers.count} user{onlineUsers.count !== 1 ? 's' : ''} online</h3>
+            <ul className="online-users-list">
+              {onlineUsers.users.map((user, index) => (
+                <li key={index}>
+                  <span className="online-indicator"></span>
+                  {user.username} {user.username === username ? '(you)' : ''}
+                </li>
+              ))}
+            </ul>
+          </div>
           <button onClick={handleLogout}>Logout</button>
         </div>
       )}
