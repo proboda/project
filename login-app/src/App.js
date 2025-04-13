@@ -108,6 +108,7 @@ function App() {
     }
     
     try {
+      console.log('Login attempt - sending request to:', `${API_URL}/api/users/login`);
       const response = await fetch(`${API_URL}/api/users/login`, {
         method: 'POST',
         headers: {
@@ -119,24 +120,32 @@ function App() {
         })
       });
       
-      const data = await response.json();
+      console.log('Login response status:', response.status);
       
-      if (!response.ok) {
-        setError(data.error || 'Login failed');
-        return;
+      try {
+        const data = await response.json();
+        console.log('Login response data:', data);
+        
+        if (!response.ok) {
+          setError(data.error || 'Login failed');
+          return;
+        }
+        
+        // Save token to localStorage
+        localStorage.setItem('token', data.token);
+        setToken(data.token);
+        setIsLoggedIn(true);
+        setError('');
+        
+        // Clear sensitive data
+        setPassword('');
+      } catch (jsonError) {
+        console.error('Failed to parse JSON response:', jsonError);
+        setError('Invalid response from server');
       }
-      
-      // Save token to localStorage
-      localStorage.setItem('token', data.token);
-      setToken(data.token);
-      setIsLoggedIn(true);
-      setError('');
-      
-      // Clear sensitive data
-      setPassword('');
     } catch (error) {
-      console.error('Login error:', error.message);
-      setError('Network error. Please try again.');
+      console.error('Login network error:', error);
+      setError(`Network error: ${error.message}`);
     }
   };
 
