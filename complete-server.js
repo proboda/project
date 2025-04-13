@@ -15,10 +15,7 @@ let users = [
 const JWT_SECRET = process.env.JWT_SECRET || 'login-app-secret-key';
 
 // Allow all origins with CORS
-app.use(cors({
-  origin: ['https://project.vercel.app', 'http://localhost:3000', 'http://localhost:3002'],
-  credentials: true
-}));
+app.use(cors());
 app.use(express.json());
 
 // Middleware to log all requests with more details
