@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import './App.css';
 
 // API base URL
-const API_URL = 'http://localhost:5001';
+const API_URL = 'https://project-t6kz.onrender.com';
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
